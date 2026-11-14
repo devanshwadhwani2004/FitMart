@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
@@ -116,7 +117,6 @@ router.get('/', async (req, res) => {
  * @desc    Returns all products where available stock (stock - reserved) is below threshold of 5
  * @access  Public
  */
-
 router.get('/low-stock', async (req, res) => {
   try {
     // only check products where stock is not null
@@ -197,16 +197,24 @@ router.put('/:id', verifyFirebaseToken, verifyAdmin, validateRequest(updateProdu
  * @desc    Deletes a product by its productId
  * @access  Private (Admin)
  */
-
 router.delete('/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
   const productId = Number(req.params.id);
 
   if (isNaN(productId)) {
     return res.status(400).json({ error: 'Invalid product ID. It must be a number.' });
   }
+
   try {
     const deleted = await Product.findOneAndDelete({ productId });
+
+    // Return 404 if product does not exist
+    if (!deleted) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Invalidate product cache only after successful deletion
     try { await cache.delPattern('products:'); } catch (e) { }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
